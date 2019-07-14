@@ -27,8 +27,6 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("A MFRC522 module.");
 
 static int     my_open(struct inode *, struct file *);
-static ssize_t my_read(struct file *, char *, size_t, loff_t *);
-static ssize_t my_write(struct file *, const  char *, size_t, loff_t *);
 static int my_release(struct inode *, struct file *);
 long ioctl_dispatch(struct file *filp, unsigned int cmd, unsigned long arg);
 unsigned char readRawRC(struct spi_device *spi, unsigned char Address);
@@ -37,10 +35,14 @@ void writeRawRC(struct spi_device *spi, unsigned char Address,
 
 struct spi_device *spi_mfrc522;
 
+struct string {
+	char* b;
+	unsigned len;
+};
+
 const struct file_operations fops = {
 open: my_open,
-read : my_read,
-write : my_write, unlocked_ioctl : ioctl_dispatch,
+unlocked_ioctl : ioctl_dispatch,
 release : my_release,
 owner : THIS_MODULE
 };
@@ -207,20 +209,26 @@ void get_buffer(char  *data)
 	kfree(buffer);
 }
 
-void write_buffer(char  *data)
+void write_buffer(struct string *data)
 {
 	//size internal is only 25
 	int i;
 	char buffer[25];
+	unsigned length;
 
-	if (copy_from_user(buffer, data, 25)) {
+	if (data->len < 25)
+		length = data->len;
+	else
+		length = 25;
+
+	if (copy_from_user(buffer, data->b, length)) {
 		pr_info("ioctl user buffer given isn't valid\n");
 		return;
 	}
 	pr_info("inside write buffer\n");
 	writeRawRC(spi_mfrc522, 0x01, 0x00); //idle
 	setBitMask(spi_mfrc522, 0x0A, 0x80); //reset
-	for (i = 0; i < 25; i++)
+	for (i = 0; i < length; i++)
 		writeRawRC(spi_mfrc522, 0x09, buffer[i]);
 	writeRawRC(spi_mfrc522, 0x01, 0x01); //saved
 	writeRawRC(spi_mfrc522, 0x01, 0x00); //idle
@@ -238,7 +246,7 @@ long ioctl_dispatch(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case IOCTL_WRITE:
 		pr_info("ioctl write\n");
-		write_buffer(buffer);
+		write_buffer((struct string*)buffer);
 		break;
 	default:
 		pr_info("ioctl unknown\n");
@@ -264,68 +272,13 @@ static int my_open(struct inode *inod, struct file *fil)
 
 
 /*
- * file operation: READ
- */
-static ssize_t my_read(struct file *filp, char *buff, size_t len, loff_t *off)
-{
-
-	//int major, minor;
-	short count;
-
-	//major = MAJOR(filp->f_dentry->d_inode->i_rdev);
-	//minor = MINOR(filp->f_dentry->d_inode->i_rdev);
-	pr_info("FILE OPERATION READ:%d:%d\n", major, 0);//minor);
-
-	//switch(minor){
-	//	case 0:
-	strcpy(dev->msg, "DATA FROM MODULE: minor: 0");
-	//		break;
-	//	default:
-	//		len = 0;
-	//}
-	if (len < BUFFER_SIZE)
-		count = copy_to_user(buff, dev->msg, len);
-	else
-		count = copy_to_user(buff, dev->msg, BUFFER_SIZE);
-	return 0;
-}
-
-
-/*
- * file operation: WRITE
- */
-static ssize_t my_write(struct file *filp, const char *buff, size_t len,
-	loff_t *off)
-{
-
-	//int major,minor;
-	short count;
-
-	memset(dev->msg, 0, BUFFER_SIZE);
-	//major = MAJOR(filp->f_dentry->d_inode->i_rdev);
-	//minor = MINOR(filp->f_dentry->d_inode->i_rdev);
-	// -- copy the string from the user space program which open and
-	// write this device
-	if (len < BUFFER_SIZE)
-		count = copy_from_user(dev->msg, buff, len);
-	else
-		count = copy_from_user(dev->msg, buff, BUFFER_SIZE);
-
-	pr_info("FILE OPERATION WRITE:%d:%d\n", major, 0);//minor);
-	pr_info("msg: %s", dev->msg);
-
-	return len;
-}
-
-
-/*
  * file operation: CLOSE
  */
 static int my_release(struct inode *inod, struct file *fil)
 {
 	int minor;
 
-	minor = 0;//MINOR(fil->f_dentry->d_inode->i_rdev);
+	minor = 0;
 	pr_info("*****Some body is closing me at major %d minor %d*****\n",
 		major, minor);
 	return 0;
