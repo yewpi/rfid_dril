@@ -56,9 +56,9 @@ static dev_t devno;
 static int cleanup(int err);
 
 int mfrc522_probe(struct spi_device *spi_dev) {
+	int err;
 	spi_mfrc522 = spi_dev;
 	pr_info("Hello, card reader!\n");
-	int err;
 	if ((alloc_chrdev_region(&devno, 0, 1, "mfrc522")) < 0)
 		return -1;
 	major = MAJOR(devno);
@@ -98,9 +98,8 @@ static int cleanup(int err) {
 int mfrc522_remove(struct spi_device *spi_dev) {
 	spi_mfrc522 = spi_dev;
 	pr_info("Remove!\n");
-	dev_t devno;
 
-	kfree(dev->msg)	
+	kfree(dev->msg);	
 
 	cdev_del(&dev->cdev);
 	kfree(dev);
@@ -112,8 +111,47 @@ int mfrc522_remove(struct spi_device *spi_dev) {
 	return 0;
 }
 
+unsigned char readRawRC(struct spi_device *spi, unsigned char Address) {
+	unsigned char ucAddr;
+	unsigned char ucRes;
+	int ret;
+	ucRes = 0;
+	ucAddr = ((Address << 1) & 0x7E) | 0x80;
+
+	ret = spi_write_then_read(spi, &ucAddr, 1, &ucRes, 1);
+	if (ret != 0) {
+		printk("spi_write_then_read err = %d\n", ret);
+	}
+	return ucRes;
+
+}
+
+void writeRawRC(struct spi_device *spi, unsigned char Address, unsigned char value) {
+	unsigned char ucAddr;
+	struct spi_transfer st[2];
+	struct spi_message msg;
+
+	ucAddr = ((Address << 1) & 0x7E);
+
+	spi_message_init(&msg);
+	memset(st, 0, sizeof(st));
+
+	st[0].tx_buf = &ucAddr;
+	st[0].len = 1;
+	spi_message_add_tail(&st[0], &msg);
+
+	st[1].tx_buf = &value;
+	st[1].len = 1;
+	spi_message_add_tail(&st[1], &msg);
+
+	spi_sync(spi, &msg);
+}
+
+
+
+/*
 void get_buffer(char  *data) {
-	char *command = kmalloc(sizeof(char) * 2);
+	char *command = kmalloc(sizeof(char) * 2, GFP_KERNEL);
 	//buffer[]	
 	command[0]  = CommandReg;
 	command[1]  = 0;
@@ -154,6 +192,7 @@ void write_buffer(char  *data) {
     	//PCD_WriteRegister(spi,ComIrqReg, 0x7F);                 // Clear all seven interrupt request bits
 	//PCD_WriteRegister(spi,FIFOLevelReg, 0x80);	
 }
+*/
 long ioctl_dispatch(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret=0;
