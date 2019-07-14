@@ -61,4 +61,4 @@ __attribute__((section(".modinfo"))) =
 MODULE_ALIAS("of:N*T*Cnxp,mfrc522");
 MODULE_ALIAS("of:N*T*Cnxp,mfrc522C*");
 
-MODULE_INFO(srcversion, "9C080C88D92A8C0B4C9DF0B");
+MODULE_INFO(srcversion, "0FD34E6F0DFBEAA68936E34");

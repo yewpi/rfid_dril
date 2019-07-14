@@ -1,0 +1,13 @@
+Pour ce projet nous avons tout d'abord dut rajouter
+un device au device tree. Et afin d'atteindre ce but 
+nous avions deux methode: l'une ce resumant a remplacer
+le device tree manuellement et l'autre impliquant de
+creer un overlay. Nous avons reussi a creer l'overlay.
+
+Ensuite nous devions creer un driver permettant l'interfacage entre l'utilisateur
+et la carte RFID MFRC522 grace a un char device.
+
+Nous avons reussi a creer l'interface ioctl et la creation du char device.
+Pourtant nous n'avons pas reussi a communique avec la carte rfid.
+
+Bonus : Nous pouvions nous passer du driver.
